@@ -1,4 +1,5 @@
 from gamestate import GameState, RandomCPU, GradDescentCPU
+import numpy as np
 
 
 def HvHRepl():
@@ -44,7 +45,7 @@ def HvCRepl(agent):
         x_coord = int(input('Enter x_coord: '))
         y_coord = int(input('Enter y_coord: '))
         coordinate = (x_coord, y_coord)
-        while not gamestate.move(humanPlayer, coordinate):
+        while not gamestate.move(humanPlayer, coordinate) == False:
             print('repeated entry. enter another location.')
             x_coord = int(input('Enter x_coord: '))
             y_coord = int(input('Enter y_coord: '))
@@ -68,17 +69,19 @@ def HvCRepl(agent):
 
 def CvCSimulation(agent1, agent2, verbose = False):
     gamestate = GameState()
-    gamestate.manualRandomInitialization()
+    gamestate.randomInitialization([1,2,3], 10)
     agent1name = 'p1'
     agent2name = 'p2'
     moves = 0
-    while not (gamestate.didWin(agent1name) or gamestate.didLose(agent1name)):
+    while True:
         moves += 1
         agent1action = agent1.getAction(gamestate, agent1name)
         gamestate.move(agent1name, agent1action)
+        if (gamestate.didWin(agent1name)): break
         agent2action = agent2.getAction(gamestate, agent2name)
         gamestate.move(agent2name, agent2action)
-    winner = agent1name if gamestate.didWin(agent1name) else agent2name
+        if (gamestate.didWin(agent2name)): break
+    winner = agent1name if gamestate.didWin(agent1name) else agent2name  # random agent 1 wins 55-60% of the time
     if verbose:
         print('Computer v computer game complete!')
         print('Statistics:')
@@ -90,20 +93,27 @@ def CvCSimulation(agent1, agent2, verbose = False):
 
 def CvAISimulation(randomAgent, AIAgent, verbose=False):
     gamestate = GameState()
-    gamestate.manualRandomInitialization()
+    gamestate.randomInitialization([2,3,4], 10)
     moves = 0
     randomAgentName = 'p1'
     AIAgentName = 'p2'
-    while not (gamestate.didWin(randomAgentName) or gamestate.didLose(randomAgentName)):
+    while True:
         moves += 1
         randomAgentAction = randomAgent.getAction(gamestate, randomAgentName)
         gamestate.move(randomAgentName, randomAgentAction)
+        if (gamestate.didWin(randomAgentName)): break
         AIAgentAction, prediction, features = AIAgent.getAction(gamestate, AIAgentName)
         reward = gamestate.move(AIAgentName, AIAgentAction)
+        if (gamestate.didWin(AIAgentName)): break
+        if verbose:
+            print("features: %s" % str(features))
+            print("weights: %s" % str(AIAgent.feature_weights))
+            print("agent chose (%d, %d)" % (AIAgentAction[0], AIAgentAction[1]))
+            print("board: %s" % str(gamestate.playerKnowledge))
         AIAgent.updateWeights(reward, prediction, features)
     winner = randomAgentName if gamestate.didWin(randomAgentName) else AIAgentName
     if verbose:
-        print('Computer v computer game complete!')
+        print('Computer v AI game complete!')
         print('Statistics:')
         print('Num moves: %d' % moves)
         print('Winner: %s' % winner)
@@ -111,21 +121,32 @@ def CvAISimulation(randomAgent, AIAgent, verbose=False):
         print('Final board agent 2: %s' % str(gamestate.playerKnowledge[AIAgentName]))
     return winner, moves
 
-def CvCSimulationRunner(agent1, agent2, num_simulations, is_training=False):
+def testInitialization(boatSizes, boardSize, n):
+    p1boards = np.zeros((boardSize, boardSize))
+    for i in range(n):
+        gamestate = GameState()
+        gamestate.randomInitialization(boatSizes, boardSize)
+        p1boards += gamestate.playerBoards['p1']
+    print(p1boards / n)
+
+
+def CvCSimulationRunner(agent1, agent2, num_simulations, is_training=False, verbose=False):
     p1wins = 0
     p2wins = 0
     average_moves = 0
     for i in range(num_simulations):
         winner, moves = None, None
         if is_training:
-            winner, moves = CvAISimulation(agent1, agent2)
+            winner, moves = CvAISimulation(agent1, agent2, verbose)
         else:
-            winner, moves = CvCSimulation(agent1, agent2)
+            winner, moves = CvCSimulation(agent1, agent2, verbose)
         if winner == 'p1':
             p1wins += 1
         else:
             p2wins += 1
         average_moves += moves
+        if i % 50 == 0:
+            print('iteration %d complete' % i)
     print('Final statistics:')
     print('p1 win percentage: %g' % (p1wins * 100 / (p1wins + p2wins)))
     print('average moves: %g' % (average_moves / num_simulations))
@@ -133,7 +154,14 @@ def CvCSimulationRunner(agent1, agent2, num_simulations, is_training=False):
 
 if __name__ == "__main__":
     randomAgent = RandomCPU()
+    # agent1 = RandomCPU()
+    # agent2 = RandomCPU()
     aiAgent = GradDescentCPU()
-    CvCSimulationRunner(randomAgent, aiAgent, 50, is_training=True)
-    CvCSimulationRunner(randomAgent, aiAgent, 50, is_training=True)
+    for i in range(10):
+        CvCSimulationRunner(randomAgent, aiAgent, 100, is_training=True)
+    # CvCSimulationRunner(randomAgent, aiAgent, 1, is_training=True, verbose=True)
+    # CvCSimulationRunner(randomAgent, aiAgent, 500, is_training=True)
+    # HvCRepl(randomAgent)
+    # CvCSimulationRunner(agent1, agent2, 1000)
+    # testInitialization([2,3,4], 10, n=1000)
 

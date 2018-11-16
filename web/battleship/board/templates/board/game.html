@@ -1,0 +1,35 @@
+<h1>Welcome {{ name }}!</h1> </br>
+
+<p> Enemy board </p>
+
+{% for row in enemyBoard %}
+	{% for cell in row %}
+		<form style="display:inline"action="/board/move" method="post">{% csrf_token %}
+		<input id="x" type="hidden" name="x" value="{{ forloop.parentloop.counter0 }}">
+		<input id="y" type="hidden" name="y" value="{{ forloop.counter0 }}">
+		<button type="Submit">{{ cell }}</button>
+		</form>
+	{% endfor %}
+	</br>
+{% endfor %}
+</br>
+
+<p> Your board </p>
+{% for row in userBoard %}
+	{% for cell in row %}
+		<button disabled="" style="background-color: {{ cell.1 }}">{{ cell.0 }}</button>
+	{% endfor %}
+	</br>
+{% endfor %}
+</br>
+
+<p> Enemy last move </p>
+{{ enemyMove }}
+</br>
+
+<p> Enter your move: </p> </br>
+<form action="/board/move" method="post">{% csrf_token %}
+	<input id="x" type="number" name="x">
+	<input id="y" type="number" name="y">
+	<input type="Submit">
+</form>
